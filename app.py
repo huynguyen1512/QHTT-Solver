@@ -218,76 +218,104 @@ class SimplexDictionary:
             iteration += 1
 
 # ==========================================
-# GIAO DIỆN & TIỀN XỬ LÝ
+# GIAO DIỆN & TIỀN XỬ LÝ (ĐÃ CẬP NHẬT UI)
 # ==========================================
+def get_subscript(n):
+    """Hàm hỗ trợ chuyển số thành chỉ số dưới (subscript) dạng Unicode"""
+    return str(n).translate(str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉"))
+
 st.set_page_config(page_title="General LP Solver", layout="wide")
 st.title("🧮 Trình giải Quy Hoạch Tuyến Tính Tổng Quát")
+st.markdown("---")
 
-col1, col2 = st.columns(2)
-with col1: num_vars = st.number_input("Số biến (n):", 1, 10, 2)
-with col2: num_constraints = st.number_input("Số ràng buộc (m):", 1, 10, 3)
+# Cài đặt kích thước
+st.sidebar.header("⚙️ Kích thước bài toán")
+num_vars = st.sidebar.number_input("Số lượng biến (n):", 1, 10, 2)
+num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 10, 3)
 
-st.subheader("1. Hàm mục tiêu")
-obj_type = st.radio("Loại:", ["Max", "Min"], horizontal=True)
+# ---------------------------------------------------------
+st.subheader("1. Hàm mục tiêu (Objective Function)")
+st.info("Nhập các hệ số $c_j$ để định hình hàm mục tiêu: $Z = c_1 x_1 + c_2 x_2 + \dots + c_n x_n$")
+
+obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
 cols = st.columns(num_vars)
 C_orig = []
 for j in range(num_vars):
     with cols[j]:
-        val = st.number_input(f"Hệ số X_{j+1}", value=0.0, step=1.0, key=f"C_{j}")
+        var_name = f"x{get_subscript(j+1)}"
+        val = st.number_input(f"Hệ số của {var_name}", value=0.0, step=1.0, key=f"C_{j}")
         C_orig.append(Fraction(val))
 
-st.subheader("2. Dấu của biến")
+# ---------------------------------------------------------
+st.subheader("2. Dấu của biến (Variable Conditions)")
+st.info("Xác định miền giá trị cho từng biến (không âm, không dương, hoặc tùy ý).")
+
 cols = st.columns(num_vars)
 var_signs = []
 for j in range(num_vars):
     with cols[j]:
-        sign = st.selectbox(f"X_{j+1}", [">= 0", "<= 0", "Tùy ý"], key=f"vsign_{j}")
+        var_name = f"x{get_subscript(j+1)}"
+        # Đã đổi thành ký hiệu toán học chuẩn Unicode
+        sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tùy ý"], key=f"vsign_{j}")
         var_signs.append(sign)
 
-st.subheader("3. Ràng buộc")
+# ---------------------------------------------------------
+st.subheader("3. Các hệ ràng buộc (Constraints)")
+st.info("Nhập ma trận hệ số $A$, chọn dấu (≤, ≥, =), và nhập vế phải $b$.")
+
 A_orig = []
 B_orig = []
 cons_signs = []
+
+# --- Tạo thanh tiêu đề cột (Header) cho đẹp ---
+header_cols = st.columns(num_vars + 2)
+for j in range(num_vars):
+    header_cols[j].markdown(f"<div style='text-align: center; font-weight: bold;'>x{get_subscript(j+1)}</div>", unsafe_allow_html=True)
+header_cols[num_vars].markdown("<div style='text-align: center; font-weight: bold;'>Dấu</div>", unsafe_allow_html=True)
+header_cols[num_vars+1].markdown("<div style='text-align: center; font-weight: bold;'>b</div>", unsafe_allow_html=True)
+# ----------------------------------------------
 
 for i in range(num_constraints):
     cols = st.columns(num_vars + 2)
     row = []
     for j in range(num_vars):
         with cols[j]:
-            val = st.number_input(f"X_{j+1}", value=0.0, step=1.0, key=f"A_{i}_{j}", label_visibility="collapsed")
+            val = st.number_input(f"A_{i}_{j}", value=0.0, step=1.0, key=f"A_{i}_{j}", label_visibility="collapsed")
             row.append(Fraction(val))
     A_orig.append(row)
     
     with cols[num_vars]:
-        sign = st.selectbox("Dấu", ["<=", ">=", "="], key=f"csign_{i}", label_visibility="collapsed")
+        # Đã đổi thành ký hiệu toán học chuẩn Unicode
+        sign = st.selectbox("Dấu", ["≤", "≥", "="], key=f"csign_{i}", label_visibility="collapsed")
         cons_signs.append(sign)
         
     with cols[num_vars+1]:
         val = st.number_input("b", value=0.0, step=1.0, key=f"B_{i}", label_visibility="collapsed")
         B_orig.append(Fraction(val))
 
+st.markdown("---")
 show_steps = st.checkbox("Hiển thị chi tiết quá trình xoay từ vựng", value=True)
 
-if st.button("🚀 Giải Bài Toán", type="primary"):
+if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True):
     # --- BƯỚC 1: CHUẨN HÓA BÀI TOÁN TỔNG QUÁT ---
     std_c_list = []
-    std_vars_map = [] # Map index mới -> Tên hiển thị
+    std_vars_map = [] 
     
-    # Chuẩn hóa biến và hàm mục tiêu
+    # Chuẩn hóa biến (Cập nhật logic dò chuỗi Unicode)
     for j in range(num_vars):
         c_val = C_orig[j] if obj_type == "Min" else -C_orig[j]
-        if var_signs[j] == ">= 0":
+        if var_signs[j] == "≥ 0":
             std_c_list.append(c_val)
             std_vars_map.append(f"x_{j+1}")
-        elif var_signs[j] == "<= 0":
+        elif var_signs[j] == "≤ 0":
             std_c_list.append(-c_val)
             std_vars_map.append(f"x'_{j+1}")
         elif var_signs[j] == "Tùy ý":
             std_c_list.extend([c_val, -c_val])
             std_vars_map.extend([f"x_{j+1}^+", f"x_{j+1}^-"])
             
-    # Chuẩn hóa ràng buộc
+    # Chuẩn hóa ràng buộc (Cập nhật logic dò chuỗi Unicode)
     std_A_matrix = []
     std_b_list = []
     
@@ -295,15 +323,14 @@ if st.button("🚀 Giải Bài Toán", type="primary"):
         row = []
         for j in range(num_vars):
             a_val = A_orig[i][j]
-            if var_signs[j] == ">= 0": row.append(a_val)
-            elif var_signs[j] == "<= 0": row.append(-a_val)
+            if var_signs[j] == "≥ 0": row.append(a_val)
+            elif var_signs[j] == "≤ 0": row.append(-a_val)
             elif var_signs[j] == "Tùy ý": row.extend([a_val, -a_val])
             
-        # Tách ràng buộc "=" thành "<=" và ">="
-        if cons_signs[i] == "<=":
+        if cons_signs[i] == "≤":
             std_A_matrix.append(row)
             std_b_list.append(B_orig[i])
-        elif cons_signs[i] == ">=":
+        elif cons_signs[i] == "≥":
             std_A_matrix.append([-x for x in row])
             std_b_list.append(-B_orig[i])
         elif cons_signs[i] == "=":
@@ -341,7 +368,6 @@ if st.button("🚀 Giải Bài Toán", type="primary"):
     # --- BƯỚC 3: GIẢI VÀ HIỂN THỊ ---
     solver = SimplexDictionary(c_dict, A_dict, b_dict, Fraction(0), chosen_method)
     
-    # Ghi nhận từ vựng xuất phát cho Dantzig/Bland
     if chosen_method != "Two-Phase":
         solver.log_dictionary("Từ vựng xuất phát:")
         
