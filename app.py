@@ -45,13 +45,35 @@ class SimplexDictionary:
         self.steps_log = []
         
     def log_dictionary(self, title, entering=None, leaving=None, is_phase1=False):
-        """Xuất từ vựng hiện tại ra định dạng LaTeX: Đóng khối, có dòng kẻ, thẳng hàng."""
+        """Xuất từ vựng: Hàm mục tiêu ở trên, kẻ ngang, rồi tới ràng buộc ở dưới."""
         latex_str = f"**{title}**\n\n"
         
         # Bắt đầu khối array để gom từ vựng và căn thẳng hàng dấu '='
         latex_str += "$$\n\\begin{array}{r c l}\n"
         
-        # Phần 1: Phương trình của các biến cơ sở (w_i hoặc x_i)
+        # Phần 1: Phương trình hàm mục tiêu (Z hoặc W phụ) nằm TRÊN CÙNG
+        obj_rhs = ""
+        first_term = True
+        if self.v != 0 or all(self.c[j] == 0 for j in self.N):
+            obj_rhs += to_latex_frac(self.v)
+            first_term = False
+            
+        for j in self.N:
+            coef = self.c[j]
+            if coef != 0:
+                var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
+                obj_rhs += format_term(coef, var_j_str, is_first=first_term)
+                first_term = False
+                
+        if obj_rhs == "": obj_rhs = "0"
+        
+        obj_name = "w_{aux}" if is_phase1 else "Z"
+        latex_str += f"{obj_name} & = & {obj_rhs} \\\\\n"
+        
+        # Đường kẻ phân cách ngang
+        latex_str += "\\hline\n"
+        
+        # Phần 2: Phương trình của các biến cơ sở (w_i hoặc x_i) nằm BÊN DƯỚI
         for i in self.B:
             var_i_str = f"\\leftarrow {i}" if i == leaving else i
             
@@ -72,29 +94,6 @@ class SimplexDictionary:
             if rhs == "": rhs = "0"
             latex_str += f"{var_i_str} & = & {rhs} \\\\\n"
             
-        # Đường kẻ phân cách ngang
-        latex_str += "\\hline\n"
-        
-        # Phần 2: Phương trình hàm mục tiêu (Z hoặc W phụ) nằm ngay dưới
-        obj_rhs = ""
-        first_term = True
-        if self.v != 0 or all(self.c[j] == 0 for j in self.N):
-            obj_rhs += to_latex_frac(self.v)
-            first_term = False
-            
-        for j in self.N:
-            coef = self.c[j]
-            if coef != 0:
-                var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
-                obj_rhs += format_term(coef, var_j_str, is_first=first_term)
-                first_term = False
-                
-        if obj_rhs == "": obj_rhs = "0"
-        
-        # Tên hàm mục tiêu: nếu đang ở Pha 1 thì gọi là w_aux, bình thường là Z
-        obj_name = "w_{aux}" if is_phase1 else "Z"
-        latex_str += f"{obj_name} & = & {obj_rhs}\n"
-        
         # Đóng khối
         latex_str += "\\end{array}\n$$\n"
         
@@ -335,7 +334,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
     b_dict = {}
     A_dict = {}
     
-    # SỬA LẠI THÀNH BIẾN w1, w2, w3...
     slack_idx = 1
     for i in range(len(std_b_list)):
         slack_var = f"w_{{{slack_idx}}}"
