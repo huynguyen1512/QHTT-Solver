@@ -379,9 +379,9 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         final_obj = -solver.v if obj_type == "Max" else solver.v
         st.markdown(f"**Giá trị hàm mục tiêu tối ưu:** $Z = {to_latex_frac(final_obj)}$")
     elif status == "Infeasible":
-        st.error("❌ Bài toán vô nghiệm (Không có phương án khả thi).")
+        st.error("❌ Bài toán vô nghiệm .")
     elif status == "Unbounded":
-        st.warning("⚠️ Bài toán có nghiệm không giới hạn (Vô cực).")
+        st.warning("⚠️ Bài toán không giới nội (Vô cực).")
         
     if show_steps:
         st.subheader("📜 Quá trình xoay Từ Vựng")
