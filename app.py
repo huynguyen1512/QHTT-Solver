@@ -279,7 +279,7 @@ num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 
 # 1. Hàm mục tiêu
 # ---------------------------------------------------------
 st.subheader("1. Hàm mục tiêu (Objective Function)")
-st.info("💡 **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n \\longrightarrow \\max / \\min$")
+st.info(" **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n \\longrightarrow \\max / \\min$")
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
 # Đã làm nổi bật dòng thông báo này!
@@ -308,7 +308,7 @@ for j in range(num_vars):
 # 3. Các hệ ràng buộc
 # ---------------------------------------------------------
 st.subheader("3. Các hệ ràng buộc (Constraints)")
-st.info("💡 **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
+st.info(" **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
 
 # Đã làm nổi bật dòng thông báo này!
 st.markdown("**👉 Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:**")
@@ -406,7 +406,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
                 first = False
         if obj_str == "": obj_str = "0"
         
-        st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
+        st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn**")
         std_latex_1 = "$$\n\\begin{array}{r l}\n"
         std_latex_1 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_1 += "\\text{với các ràng buộc:} & \\\\\n"
@@ -433,7 +433,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         std_latex_1 += "\\end{array}\n$$"
         st.markdown(std_latex_1)
 
-        st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ để chuyển bất phương trình thành hệ phương trình**")
+        st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ vào các ràng buộc**")
         std_latex_2 = "$$\n\\begin{array}{r l}\n"
         std_latex_2 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_2 += "\\text{với các ràng buộc:} & \\\\\n"
@@ -473,10 +473,10 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         msg = "Hệ số $b_i$ của từ vựng xuất phát có chứa giá trị âm. Chương trình tự động áp dụng: **Phương pháp Đơn hình 2 Pha**."
     elif any(v == 0 for v in b_dict.values()):
         chosen_method = "Bland"
-        msg = "Từ vựng xuất phát khả thi nhưng rơi vào trạng thái suy biến ($b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
+        msg = "Phát hiện có hệ số $b_i = 0$, bài toán rơi vào trạng thái suy biến. Chương trình tự động áp dụng: **Phương pháp Đơn hình Bland**."
     else:
         chosen_method = "Dantzig"
-        msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
+        msg = "Tất cả hệ số $b_i > 0$. Chương trình tự động áp dụng: **Phương pháp Đơn hình Dantzig**."
 
     st.success(msg)
 
