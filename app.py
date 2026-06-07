@@ -254,9 +254,15 @@ st.sidebar.header("⚙️ Kích thước bài toán")
 num_vars = st.sidebar.number_input("Số lượng biến (n):", 1, 10, 2)
 num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 10, 3)
 
+# ---------------------------------------------------------
+# 1. Hàm mục tiêu
+# ---------------------------------------------------------
 st.subheader("1. Hàm mục tiêu (Objective Function)")
+st.info("💡 **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n \\longrightarrow \\max / \\min$")
+
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
+st.caption("Nhập các hệ số $c_j$ tương ứng:")
 cols = st.columns(num_vars)
 C_orig = []
 for j in range(num_vars):
@@ -265,6 +271,9 @@ for j in range(num_vars):
         val = st.number_input(f"Hệ số của {var_name}", value=0.0, step=1.0, key=f"C_{j}")
         C_orig.append(Fraction(val))
 
+# ---------------------------------------------------------
+# 2. Dấu của biến
+# ---------------------------------------------------------
 st.subheader("2. Dấu của biến (Variable Conditions)")
 cols = st.columns(num_vars)
 var_signs = []
@@ -274,7 +283,13 @@ for j in range(num_vars):
         sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tùy ý"], key=f"vsign_{j}")
         var_signs.append(sign)
 
+# ---------------------------------------------------------
+# 3. Các hệ ràng buộc
+# ---------------------------------------------------------
 st.subheader("3. Các hệ ràng buộc (Constraints)")
+st.info("💡 **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
+
+st.caption("Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:")
 A_orig = []
 B_orig = []
 cons_signs = []
