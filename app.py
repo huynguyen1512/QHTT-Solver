@@ -14,22 +14,6 @@ def to_latex_frac(val: Fraction):
         return f"-\\frac{{{-val.numerator}}}{{{val.denominator}}}"
     return f"\\frac{{{val.numerator}}}{{{val.denominator}}}"
 
-def format_term(coef: Fraction, var_name: str, is_first: bool = False):
-    """Định dạng một số hạng trong phương trình đại số"""
-    if coef == 0:
-        return ""
-    
-    sign_str = ""
-    if is_first:
-        if coef < 0: sign_str = "-"
-    else:
-        sign_str = " + " if coef > 0 else " - "
-        
-    abs_coef = abs(coef)
-    coef_str = "" if abs_coef == 1 else to_latex_frac(abs_coef)
-    
-    return f"{sign_str}{coef_str}{var_name}"
-
 # ==========================================
 # LÕI THUẬT TOÁN ĐƠN HÌNH TỪ VỰNG
 # ==========================================
@@ -53,49 +37,59 @@ class SimplexDictionary:
         return (prefix_score, num, var_str)
         
     def log_dictionary(self, title, entering=None, leaving=None, is_phase1=False):
-        """Xuất từ vựng: Hàm mục tiêu ở trên, kẻ ngang, rồi tới ràng buộc ở dưới."""
+        """Xuất từ vựng: Căn lề thẳng hàng tuyệt đối dạng cột cho từng biến."""
         latex_str = f"**{title}**\n\n"
-        latex_str += "$$\n\\begin{array}{r c l}\n"
         
-        # Phần 1: Phương trình hàm mục tiêu (Z hoặc W phụ) nằm TRÊN CÙNG
-        obj_rhs = ""
-        first_term = True
-        if self.v != 0 or all(self.c[j] == 0 for j in self.N):
-            obj_rhs += to_latex_frac(self.v)
-            first_term = False
-            
-        for j in self.N:
-            coef = self.c[j]
-            if coef != 0:
-                var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
-                obj_rhs += format_term(coef, var_j_str, is_first=first_term)
-                first_term = False
+        sorted_N = sorted(self.N, key=self.var_sort_key)
+        
+        # Tạo format cột: LHS (=r), Dấu = (=c), Hằng số (=r), Các biến phi cơ sở (=r)
+        cols_format = "r c r " + " ".join(["r"] * len(sorted_N))
+        latex_str += f"$$\n\\begin{{array}}{{{cols_format}}}\n"
+        
+        def build_row(lhs, const_val, coeffs_dict):
+            """Hàm xây dựng một dòng phương trình căn cột chuẩn xác"""
+            all_zero_coeffs = all(coeffs_dict[j] == 0 for j in sorted_N)
+            if const_val != 0 or all_zero_coeffs:
+                const_str = to_latex_frac(const_val)
+                has_printed = True
+            else:
+                const_str = ""
+                has_printed = False
                 
-        if obj_rhs == "": obj_rhs = "0"
-        
+            row_str = f"{lhs} & = & {const_str}"
+            
+            for j in sorted_N:
+                coef = coeffs_dict[j]
+                if coef == 0:
+                    row_str += " & " # Bỏ trống ô để thẳng hàng
+                else:
+                    var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
+                    
+                    if not has_printed:
+                        sign_str = "-" if coef < 0 else ""
+                    else:
+                        sign_str = "{}+" if coef > 0 else "{}-"
+                    
+                    abs_coef = abs(coef)
+                    coef_str = "" if abs_coef == 1 else to_latex_frac(abs_coef)
+                    
+                    term_str = f"{sign_str} {coef_str}{var_j_str}"
+                    row_str += f" & {term_str}"
+                    has_printed = True
+            return row_str + " \\\\\n"
+
+        # 1. Hàm mục tiêu
         obj_name = "w_{aux}" if is_phase1 else "Z"
-        latex_str += f"{obj_name} & = & {obj_rhs} \\\\\n"
+        latex_str += build_row(obj_name, self.v, self.c)
         latex_str += "\\hline\n"
         
-        # Phần 2: Phương trình của các biến cơ sở (w_i hoặc x_i) nằm BÊN DƯỚI
-        for i in self.B:
+        # 2. Các ràng buộc
+        sorted_B = sorted(self.B, key=self.var_sort_key)
+        for i in sorted_B:
             var_i_str = f"\\leftarrow {i}" if i == leaving else i
-            rhs = ""
-            first_term = True
-            
-            if self.b[i] != 0 or all(self.A[i][j] == 0 for j in self.N):
-                rhs += to_latex_frac(self.b[i])
-                first_term = False
-                
-            for j in self.N:
-                coef = -self.A[i][j]
-                if coef != 0:
-                    var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
-                    rhs += format_term(coef, var_j_str, is_first=first_term)
-                    first_term = False
-                    
-            if rhs == "": rhs = "0"
-            latex_str += f"{var_i_str} & = & {rhs} \\\\\n"
+            # Hệ số của ràng buộc trong từ vựng bị đảo dấu (-a_ij)
+            coeffs_dict = {j: -self.A[i][j] for j in sorted_N}
+            latex_str += build_row(var_i_str, self.b[i], coeffs_dict)
             
         latex_str += "\\end{array}\n$$\n"
         self.steps_log.append(latex_str)
@@ -142,8 +136,13 @@ class SimplexDictionary:
         self.B.remove(leaving)
         self.B.append(entering)
 
-        self.N.sort(key=self.var_sort_key)
-        self.B.sort(key=self.var_sort_key)
+    def is_twin_in_basis(self, j):
+        """Kiểm tra xem biến phi cơ sở j có phải là cặp tách của một biến cơ sở không (Tùy ý)"""
+        if j.endswith("^+"):
+            return j[:-2] + "^-" in self.B
+        elif j.endswith("^-"):
+            return j[:-2] + "^+" in self.B
+        return False
 
     def solve(self):
         if self.method == "Two-Phase":
@@ -158,7 +157,6 @@ class SimplexDictionary:
             self.c = {j: Fraction(0) for j in self.N}
             self.c["x_0"] = Fraction(1)
             self.v = Fraction(0)
-            self.N.sort(key=self.var_sort_key)
             
             leaving = min(self.b, key=self.b.get)
             entering = "x_0"
@@ -167,7 +165,7 @@ class SimplexDictionary:
             self.pivot(entering, leaving)
             
             status = self._run_phase(rule="Dantzig", phase_name="Pha 1", is_phase1=True, start_iter=1)
-            if status != "Optimal": return status
+            if status not in ["Optimal_Unique", "Optimal_Infinite"]: return status
             if self.v > 0: return "Infeasible"
             
             # Khôi phục Pha 2
@@ -193,6 +191,7 @@ class SimplexDictionary:
     def _run_phase(self, rule, phase_name, is_phase1, start_iter=0):
         iteration = start_iter
         while True:
+            # 1. Kiểm tra tối ưu
             if all(val >= 0 for val in self.c.values()):
                 if iteration == 0 and phase_name == "Bài toán":
                     title = "Từ vựng xuất phát (Đã tối ưu ngay từ đầu):"
@@ -201,8 +200,17 @@ class SimplexDictionary:
                 else:
                     title = f"Từ vựng Tối ưu ({phase_name}):"
                 self.log_dictionary(title, is_phase1=is_phase1)
-                return "Optimal"
                 
+                # Kiểm tra vô số nghiệm (Có c_j = 0 ở biến phi cơ sở, bỏ qua biến tùy ý tách rời)
+                has_infinite = False
+                for j in self.N:
+                    if self.c[j] == 0 and not self.is_twin_in_basis(j):
+                        has_infinite = True
+                        break
+                        
+                return "Optimal_Infinite" if has_infinite else "Optimal_Unique"
+                
+            # 2. Chọn biến vào
             entering = None
             if rule == "Bland":
                 candidates = [j for j in self.N if self.c[j] < 0]
@@ -210,6 +218,7 @@ class SimplexDictionary:
             else:
                 entering = min(self.N, key=lambda j: self.c[j])
 
+            # 3. Chọn biến ra
             leaving_candidates = []
             for i in self.B:
                 if self.A[i][entering] > 0:
@@ -227,6 +236,7 @@ class SimplexDictionary:
             else:
                 leaving = tied_leaving[0]
 
+            # 4. Ghi nhận log
             if phase_name == "Bài toán" and iteration == 0:
                 title = "Từ vựng xuất phát:"
             elif phase_name == "Pha 1" and iteration == 1:
@@ -246,6 +256,17 @@ class SimplexDictionary:
 def get_subscript(n):
     return str(n).translate(str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉"))
 
+def format_term_simple(coef: Fraction, var_name: str, is_first: bool = False):
+    if coef == 0: return ""
+    sign_str = ""
+    if is_first:
+        if coef < 0: sign_str = "-"
+    else:
+        sign_str = " + " if coef > 0 else " - "
+    abs_coef = abs(coef)
+    coef_str = "" if abs_coef == 1 else to_latex_frac(abs_coef)
+    return f"{sign_str}{coef_str}{var_name}"
+
 st.set_page_config(page_title="General LP Solver", layout="wide")
 st.title("🧮 Trình giải Quy Hoạch Tuyến Tính Tổng Quát")
 st.markdown("---")
@@ -259,10 +280,10 @@ num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 
 # ---------------------------------------------------------
 st.subheader("1. Hàm mục tiêu (Objective Function)")
 st.info("💡 **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n \\longrightarrow \\max / \\min$")
-
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
-st.caption("Nhập các hệ số $c_j$ tương ứng:")
+# Đã làm nổi bật dòng thông báo này!
+st.markdown("**👉 Nhập các hệ số $c_j$ tương ứng:**")
 cols = st.columns(num_vars)
 C_orig = []
 for j in range(num_vars):
@@ -289,7 +310,8 @@ for j in range(num_vars):
 st.subheader("3. Các hệ ràng buộc (Constraints)")
 st.info("💡 **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
 
-st.caption("Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:")
+# Đã làm nổi bật dòng thông báo này!
+st.markdown("**👉 Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:**")
 A_orig = []
 B_orig = []
 cons_signs = []
@@ -371,7 +393,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         slack_idx += 1
 
     # ==========================================
-    # HIỂN THỊ BÀI TOÁN DẠNG CHUẨN TRƯỚC TỪ VỰNG
+    # HIỂN THỊ BÀI TOÁN DẠNG CHUẨN
     # ==========================================
     if show_steps:
         st.subheader("📝 Quá trình chuẩn hóa bài toán")
@@ -380,11 +402,10 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         first = True
         for j, coef in c_dict.items():
             if coef != 0:
-                obj_str += format_term(coef, j, is_first=first)
+                obj_str += format_term_simple(coef, j, is_first=first)
                 first = False
         if obj_str == "": obj_str = "0"
         
-        # --- BƯỚC 1: Dạng chuẩn (Bất phương trình) ---
         st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
         std_latex_1 = "$$\n\\begin{array}{r l}\n"
         std_latex_1 += f"\\min Z = & {obj_str} \\\\\n"
@@ -395,7 +416,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             for j, var_name in enumerate(std_vars_map):
                 coef = std_A_matrix[i][j]
                 if coef != 0:
-                    row_str += format_term(coef, var_name, is_first=first)
+                    row_str += format_term_simple(coef, var_name, is_first=first)
                     first = False
             
             if row_str == "": row_str = "0"
@@ -412,7 +433,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         std_latex_1 += "\\end{array}\n$$"
         st.markdown(std_latex_1)
 
-        # --- BƯỚC 2: Thêm biến bù w ---
         st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ để chuyển bất phương trình thành hệ phương trình**")
         std_latex_2 = "$$\n\\begin{array}{r l}\n"
         std_latex_2 += f"\\min Z = & {obj_str} \\\\\n"
@@ -423,11 +443,11 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             for j, var_name in enumerate(std_vars_map):
                 coef = std_A_matrix[i][j]
                 if coef != 0:
-                    row_str += format_term(coef, var_name, is_first=first)
+                    row_str += format_term_simple(coef, var_name, is_first=first)
                     first = False
             
             slack_var = f"w_{{{i+1}}}"
-            row_str += format_term(Fraction(1), slack_var, is_first=first)
+            row_str += format_term_simple(Fraction(1), slack_var, is_first=first)
             
             if row_str == "": row_str = "0"
             std_latex_2 += f"& {row_str} = {to_latex_frac(std_b_list[i])} \\\\\n"
@@ -473,9 +493,16 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
     st.divider()
     
     # --- HIỂN THỊ KẾT LUẬN CUỐI CÙNG ---
-    if status == "Optimal":
+    if status in ["Optimal_Unique", "Optimal_Infinite"]:
         st.markdown("### ✅ Kết luận")
         
+        # In Trạng Thái Kết Luận (Câu chốt theo yêu cầu)
+        if status == "Optimal_Unique":
+            st.markdown("**Bài toán có nghiệm duy nhất.**")
+        else:
+            st.markdown("**Bài toán có vô số nghiệm.**")
+        
+        # Truy xuất nghiệm
         optimal_solution = []
         for j in range(num_vars):
             if var_signs[j] == "≥ 0":
@@ -498,6 +525,8 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         st.markdown(f"$$ Z = {to_latex_frac(final_obj)} $$")
         
     elif status == "Infeasible":
-        st.error("❌ Kết luận: Bài toán vô nghiệm (Không có phương án khả thi).")
+        st.markdown("### ❌ Kết luận")
+        st.markdown("**Bài toán vô nghiệm.**")
     elif status == "Unbounded":
-        st.warning("⚠️ Kết luận: Bài toán có nghiệm không giới hạn (Vô cực).")
+        st.markdown("### ⚠️ Kết luận")
+        st.markdown("**Bài toán không giới nội.**")
