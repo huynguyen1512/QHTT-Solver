@@ -113,7 +113,6 @@ class SimplexDictionary:
         latex_str = f"**{title}**\n\n"
         
         sorted_N = sorted(self.N, key=self.var_sort_key)
-        
         cols_format = "r c r " + " ".join(["r"] * len(sorted_N))
         latex_str += f"$$\n\\begin{{array}}{{{cols_format}}}\n"
         
@@ -133,7 +132,6 @@ class SimplexDictionary:
                 if coef == 0:
                     row_str += " & " 
                 else:
-                    # Mũi tên biến vào CHỈ hiện trên hàm mục tiêu Z hoặc partial
                     if is_objective and j == entering:
                         var_j_str = f"\\overset{{\\downarrow}}{{{j}}}"
                     else:
@@ -153,19 +151,16 @@ class SimplexDictionary:
                     
             return row_str + " \\\\[1.5ex]\n"
 
-        # 1. Hàm mục tiêu (Dùng Delta cong (partial) cho Pha 1)
         obj_name = "\\partial" if is_phase1 else "Z"
         latex_str += build_row(obj_name, self.v, self.c, is_objective=True)
         latex_str += "\\hline\n"
         
-        # 2. Các ràng buộc
         sorted_B = sorted(self.B, key=self.var_sort_key)
         is_first_row = True
         
         for i in sorted_B:
             var_i_str = f"\\leftarrow {i}" if i == leaving else i
             
-            # Thêm thanh chống vô hình rule{0pt}{3ex} vào dòng ngay dưới gạch ngang để không đè số
             if is_first_row:
                 var_i_str = f"\\rule{{0pt}}{{3ex}}{var_i_str}"
                 is_first_row = False
@@ -229,10 +224,8 @@ class SimplexDictionary:
             orig_c = self.c.copy()
             orig_v = self.v
             
-            # Xuất text Bài toán bổ trợ trước khi thay đổi dữ liệu
             self.log_auxiliary_problem()
             
-            # Khởi tạo Pha 1
             self.N.append("x_0")
             for i in self.B:
                 self.A[i]["x_0"] = Fraction(-1)
@@ -244,7 +237,6 @@ class SimplexDictionary:
             leaving = min(self.b, key=self.b.get)
             entering = "x_0"
             
-            # Từ vựng xuất phát (Bước 3)
             self.log_dictionary("**Bước 3: Lập từ vựng xuất phát (Chưa khả thi):**", entering, leaving, is_phase1=True)
             self.pivot(entering, leaving)
             
@@ -266,7 +258,6 @@ class SimplexDictionary:
                     for k in self.N:
                         self.c[k] -= orig_c[j] * self.A[j][k]
                         
-            # Dấu hiệu phân cách Pha 2
             self.steps_log.append("---\n### 🟢 Pha 2: Tối ưu bài toán gốc\n")
             return self._run_phase(rule="Dantzig", phase_name="Pha 2", is_phase1=False, start_iter=0)
             
@@ -450,6 +441,21 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         A_dict[slack_var] = {std_vars_map[j]: std_A_matrix[i][j] for j in range(len(std_vars_map))}
         slack_idx += 1
 
+    # --- CHẨN ĐOÁN PHƯƠNG PHÁP CHẠY NGẦM TRƯỚC ---
+    min_b = min(b_dict.values())
+    if min_b < 0:
+        chosen_method = "Two-Phase"
+        msg = "Hệ số $b_i$ của từ vựng xuất phát có chứa giá trị âm. Chương trình tự động áp dụng: **Phương pháp Đơn hình 2 Pha**."
+    elif any(v == 0 for v in b_dict.values()):
+        chosen_method = "Bland"
+        msg = "Từ vựng xuất phát khả thi nhưng rơi vào trạng thái suy biến ($b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
+    else:
+        chosen_method = "Dantzig"
+        msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
+
+    # ==========================================
+    # HIỂN THỊ QUÁ TRÌNH CHUẨN HÓA
+    # ==========================================
     if show_steps:
         st.subheader("📝 Quá trình chuẩn hóa bài toán")
         
@@ -461,7 +467,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
                 first = False
         if obj_str == "": obj_str = "0"
         
-        st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
+        st.markdown("**Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
         std_latex_1 = "$$\n\\begin{array}{r l}\n"
         std_latex_1 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_1 += "\\text{với các ràng buộc:} & \\\\\n"
@@ -488,50 +494,43 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         std_latex_1 += "\\end{array}\n$$"
         st.markdown(std_latex_1)
 
-        st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ để chuyển bất phương trình thành hệ phương trình**")
-        std_latex_2 = "$$\n\\begin{array}{r l}\n"
-        std_latex_2 += f"\\min Z = & {obj_str} \\\\\n"
-        std_latex_2 += "\\text{với các ràng buộc:} & \\\\\n"
-        for i in range(len(std_b_list)):
-            row_str = ""
-            first = True
-            for j, var_name in enumerate(std_vars_map):
-                coef = std_A_matrix[i][j]
-                if coef != 0:
-                    row_str += format_term_simple(coef, var_name, is_first=first)
-                    first = False
-            
-            slack_var = f"w_{{{i+1}}}"
-            row_str += format_term_simple(Fraction(1), slack_var, is_first=first)
-            
-            if row_str == "": row_str = "0"
-            std_latex_2 += f"& {row_str} = {to_latex_frac(std_b_list[i])} \\\\\n"
-            
-        all_vars = std_vars_map + [f"w_{{{i+1}}}" for i in range(len(std_b_list))]
-        var_chunks_2 = [all_vars[i:i + 8] for i in range(0, len(all_vars), 8)]
-        for idx, chunk in enumerate(var_chunks_2):
-            line = ", ".join(chunk)
-            if idx == len(var_chunks_2) - 1:
-                std_latex_2 += f"& {line} \\ge 0\n"
-            else:
-                std_latex_2 += f"& {line}, \\\\\n"
+        if chosen_method != "Two-Phase":
+            st.markdown("**Thêm các biến bù $w_i \\ge 0$ để chuyển bất phương trình thành hệ phương trình**")
+            std_latex_2 = "$$\n\\begin{array}{r l}\n"
+            std_latex_2 += f"\\min Z = & {obj_str} \\\\\n"
+            std_latex_2 += "\\text{với các ràng buộc:} & \\\\\n"
+            for i in range(len(std_b_list)):
+                row_str = ""
+                first = True
+                for j, var_name in enumerate(std_vars_map):
+                    coef = std_A_matrix[i][j]
+                    if coef != 0:
+                        row_str += format_term_simple(coef, var_name, is_first=first)
+                        first = False
                 
-        std_latex_2 += "\\end{array}\n$$"
-        st.markdown(std_latex_2)
-
-    min_b = min(b_dict.values())
-    if min_b < 0:
-        chosen_method = "Two-Phase"
-        msg = "Hệ số $b_i$ của từ vựng xuất phát có chứa giá trị âm. Chương trình tự động áp dụng: **Phương pháp Đơn hình 2 Pha**."
-    elif any(v == 0 for v in b_dict.values()):
-        chosen_method = "Bland"
-        msg = "Từ vựng xuất phát khả thi nhưng rơi vào trạng thái suy biến ($b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
-    else:
-        chosen_method = "Dantzig"
-        msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
+                slack_var = f"w_{{{i+1}}}"
+                row_str += format_term_simple(Fraction(1), slack_var, is_first=first)
+                
+                if row_str == "": row_str = "0"
+                std_latex_2 += f"& {row_str} = {to_latex_frac(std_b_list[i])} \\\\\n"
+                
+            all_vars = std_vars_map + [f"w_{{{i+1}}}" for i in range(len(std_b_list))]
+            var_chunks_2 = [all_vars[i:i + 8] for i in range(0, len(all_vars), 8)]
+            for idx, chunk in enumerate(var_chunks_2):
+                line = ", ".join(chunk)
+                if idx == len(var_chunks_2) - 1:
+                    std_latex_2 += f"& {line} \\ge 0\n"
+                else:
+                    std_latex_2 += f"& {line}, \\\\\n"
+                    
+            std_latex_2 += "\\end{array}\n$$"
+            st.markdown(std_latex_2)
+        else:
+            st.info("💡 Do hệ số $b_i$ có giá trị âm, bài toán sẽ được tiếp tục xử lý bằng **Phương pháp Đơn hình 2 Pha**. Bước thêm biến bù sẽ được thực hiện lồng ghép trong quá trình lập Bài toán bổ trợ ở Pha 1.")
 
     st.success(msg)
 
+    # Khởi tạo và Giải
     solver = SimplexDictionary(c_dict, A_dict, b_dict, Fraction(0), chosen_method)
     status = solver.solve()
     
