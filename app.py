@@ -356,13 +356,12 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         slack_idx += 1
 
     # ==========================================
-    # HIỂN THỊ BÀI TOÁN DẠNG CHUẨN
+    # HIỂN THỊ BÀI TOÁN DẠNG CHUẨN TRƯỚC
     # ==========================================
     if show_steps:
         st.subheader("📝 Bài toán dạng chuẩn")
         std_latex = "$$\n\\begin{array}{r l}\n"
         
-        # Hàm mục tiêu (sau khi đã chuẩn hóa)
         obj_str = ""
         first = True
         for j, coef in c_dict.items():
@@ -372,7 +371,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         if obj_str == "": obj_str = "0"
         std_latex += f"Z = & {obj_str} \\rightarrow \\min \\\\\n"
         
-        # Ràng buộc
         std_latex += "\\text{với các ràng buộc:} & \\\\\n"
         for i in range(len(std_b_list)):
             row_str = ""
@@ -389,7 +387,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             if row_str == "": row_str = "0"
             std_latex += f"& {row_str} = {to_latex_frac(std_b_list[i])} \\\\\n"
             
-        # Điều kiện không âm (cắt dòng cho gọn nếu quá dài)
         all_vars = std_vars_map + [f"w_{{{i+1}}}" for i in range(len(std_b_list))]
         var_chunks = [all_vars[i:i + 8] for i in range(0, len(all_vars), 8)]
         for idx, chunk in enumerate(var_chunks):
@@ -422,17 +419,43 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
     solver = SimplexDictionary(c_dict, A_dict, b_dict, Fraction(0), chosen_method)
     status = solver.solve()
     
-    st.divider()
-    if status == "Optimal":
-        st.markdown("### ✅ Đã tìm thấy nghiệm tối ưu!")
-        final_obj = -solver.v if obj_type == "Max" else solver.v
-        st.markdown(f"**Giá trị hàm mục tiêu tối ưu:** $Z = {to_latex_frac(final_obj)}$")
-    elif status == "Infeasible":
-        st.error("❌ Bài toán vô nghiệm (Không có phương án khả thi).")
-    elif status == "Unbounded":
-        st.warning("⚠️ Bài toán có nghiệm không giới hạn (Vô cực).")
-        
+    # --- HIỂN THỊ QUÁ TRÌNH XOAY ---
     if show_steps:
         st.subheader("📜 Quá trình xoay Từ Vựng")
         for step in solver.steps_log:
             st.markdown(step)
+            
+    st.divider()
+    
+    # --- HIỂN THỊ KẾT LUẬN (ĐẶT Ở CUỐI CÙNG) ---
+    if status == "Optimal":
+        st.markdown("### ✅ Kết luận")
+        
+        # Truy xuất lại giá trị các biến x_1, x_2... gốc từ từ vựng cuối
+        optimal_solution = []
+        for j in range(num_vars):
+            if var_signs[j] == "≥ 0":
+                val = solver.b.get(f"x_{{{j+1}}}", Fraction(0))
+            elif var_signs[j] == "≤ 0":
+                val = -solver.b.get(f"x'_{{{j+1}}}", Fraction(0))
+            elif var_signs[j] == "Tùy ý":
+                val_plus = solver.b.get(f"x_{{{j+1}}}^+", Fraction(0))
+                val_minus = solver.b.get(f"x_{{{j+1}}}^-", Fraction(0))
+                val = val_plus - val_minus
+            
+            optimal_solution.append(f"x_{{{j+1}}} = {to_latex_frac(val)}")
+        
+        # In Nghiệm
+        st.markdown("**Nghiệm tối ưu của bài toán là:**")
+        sol_str = ", \\quad ".join(optimal_solution)
+        st.markdown(f"$$ ( {sol_str} ) $$")
+        
+        # In Giá trị Z
+        final_obj = -solver.v if obj_type == "Max" else solver.v
+        st.markdown("**Giá trị tối ưu của bài toán là:**")
+        st.markdown(f"$$ Z = {to_latex_frac(final_obj)} $$")
+        
+    elif status == "Infeasible":
+        st.error("❌ Kết luận: Bài toán vô nghiệm (Không có phương án khả thi).")
+    elif status == "Unbounded":
+        st.warning("⚠️ Kết luận: Bài toán có nghiệm không giới hạn (Vô cực).")
