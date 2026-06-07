@@ -37,17 +37,15 @@ class SimplexDictionary:
         return (prefix_score, num, var_str)
         
     def log_dictionary(self, title, entering=None, leaving=None, is_phase1=False):
-        """Xuất từ vựng: Căn lề thẳng hàng tuyệt đối dạng cột cho từng biến."""
+        """Xuất từ vựng: Căn lề thẳng hàng, giãn dòng phân số và chỉ đánh mũi tên vào ở hàm mục tiêu."""
         latex_str = f"**{title}**\n\n"
         
         sorted_N = sorted(self.N, key=self.var_sort_key)
         
-        # Tạo format cột: LHS (=r), Dấu = (=c), Hằng số (=r), Các biến phi cơ sở (=r)
         cols_format = "r c r " + " ".join(["r"] * len(sorted_N))
         latex_str += f"$$\n\\begin{{array}}{{{cols_format}}}\n"
         
-        def build_row(lhs, const_val, coeffs_dict):
-            """Hàm xây dựng một dòng phương trình căn cột chuẩn xác"""
+        def build_row(lhs, const_val, coeffs_dict, is_objective=False):
             all_zero_coeffs = all(coeffs_dict[j] == 0 for j in sorted_N)
             if const_val != 0 or all_zero_coeffs:
                 const_str = to_latex_frac(const_val)
@@ -61,9 +59,13 @@ class SimplexDictionary:
             for j in sorted_N:
                 coef = coeffs_dict[j]
                 if coef == 0:
-                    row_str += " & " # Bỏ trống ô để thẳng hàng
+                    row_str += " & " 
                 else:
-                    var_j_str = f"\\overset{{\\downarrow}}{{{j}}}" if j == entering else j
+                    # Mũi tên biến vào CHỈ hiện trên hàm mục tiêu
+                    if is_objective and j == entering:
+                        var_j_str = f"\\overset{{\\downarrow}}{{{j}}}"
+                    else:
+                        var_j_str = j
                     
                     if not has_printed:
                         sign_str = "-" if coef < 0 else ""
@@ -76,20 +78,21 @@ class SimplexDictionary:
                     term_str = f"{sign_str} {coef_str}{var_j_str}"
                     row_str += f" & {term_str}"
                     has_printed = True
-            return row_str + " \\\\\n"
+                    
+            # Thêm \\[1.5ex] để tạo khoảng giãn cách dọc, chống đè phân số giữa các dòng
+            return row_str + " \\\\[1.5ex]\n"
 
         # 1. Hàm mục tiêu
         obj_name = "w_{aux}" if is_phase1 else "Z"
-        latex_str += build_row(obj_name, self.v, self.c)
+        latex_str += build_row(obj_name, self.v, self.c, is_objective=True)
         latex_str += "\\hline\n"
         
         # 2. Các ràng buộc
         sorted_B = sorted(self.B, key=self.var_sort_key)
         for i in sorted_B:
             var_i_str = f"\\leftarrow {i}" if i == leaving else i
-            # Hệ số của ràng buộc trong từ vựng bị đảo dấu (-a_ij)
             coeffs_dict = {j: -self.A[i][j] for j in sorted_N}
-            latex_str += build_row(var_i_str, self.b[i], coeffs_dict)
+            latex_str += build_row(var_i_str, self.b[i], coeffs_dict, is_objective=False)
             
         latex_str += "\\end{array}\n$$\n"
         self.steps_log.append(latex_str)
@@ -201,7 +204,7 @@ class SimplexDictionary:
                     title = f"Từ vựng Tối ưu ({phase_name}):"
                 self.log_dictionary(title, is_phase1=is_phase1)
                 
-                # Kiểm tra vô số nghiệm (Có c_j = 0 ở biến phi cơ sở, bỏ qua biến tùy ý tách rời)
+                # Kiểm tra vô số nghiệm
                 has_infinite = False
                 for j in self.N:
                     if self.c[j] == 0 and not self.is_twin_in_basis(j):
@@ -279,10 +282,9 @@ num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 
 # 1. Hàm mục tiêu
 # ---------------------------------------------------------
 st.subheader("1. Hàm mục tiêu (Objective Function)")
-st.info(" **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n$ ")
+st.info("💡 **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n \\longrightarrow \\max / \\min$")
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
-# Đã làm nổi bật dòng thông báo này!
 st.markdown("**👉 Nhập các hệ số $c_j$ tương ứng:**")
 cols = st.columns(num_vars)
 C_orig = []
@@ -308,9 +310,8 @@ for j in range(num_vars):
 # 3. Các hệ ràng buộc
 # ---------------------------------------------------------
 st.subheader("3. Các hệ ràng buộc (Constraints)")
-st.info(" **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
+st.info("💡 **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
 
-# Đã làm nổi bật dòng thông báo này!
 st.markdown("**👉 Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:**")
 A_orig = []
 B_orig = []
@@ -406,7 +407,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
                 first = False
         if obj_str == "": obj_str = "0"
         
-        st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn**")
+        st.markdown("**Bước 1: Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
         std_latex_1 = "$$\n\\begin{array}{r l}\n"
         std_latex_1 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_1 += "\\text{với các ràng buộc:} & \\\\\n"
@@ -433,7 +434,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         std_latex_1 += "\\end{array}\n$$"
         st.markdown(std_latex_1)
 
-        st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ vào các ràng buộc**")
+        st.markdown("**Bước 2: Thêm các biến bù $w_i \\ge 0$ để chuyển bất phương trình thành hệ phương trình**")
         std_latex_2 = "$$\n\\begin{array}{r l}\n"
         std_latex_2 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_2 += "\\text{với các ràng buộc:} & \\\\\n"
@@ -473,10 +474,10 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         msg = "Hệ số $b_i$ của từ vựng xuất phát có chứa giá trị âm. Chương trình tự động áp dụng: **Phương pháp Đơn hình 2 Pha**."
     elif any(v == 0 for v in b_dict.values()):
         chosen_method = "Bland"
-        msg = "Phát hiện có hệ số $b_i = 0$, bài toán rơi vào trạng thái suy biến. Chương trình tự động áp dụng: **Phương pháp Đơn hình Bland**."
+        msg = "Từ vựng xuất phát khả thi nhưng rơi vào trạng thái suy biến ($b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
     else:
         chosen_method = "Dantzig"
-        msg = "Tất cả hệ số $b_i > 0$. Chương trình tự động áp dụng: **Phương pháp Đơn hình Dantzig**."
+        msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
 
     st.success(msg)
 
@@ -496,13 +497,11 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
     if status in ["Optimal_Unique", "Optimal_Infinite"]:
         st.markdown("### ✅ Kết luận")
         
-        # In Trạng Thái Kết Luận (Câu chốt theo yêu cầu)
         if status == "Optimal_Unique":
             st.markdown("**Bài toán có nghiệm duy nhất.**")
         else:
             st.markdown("**Bài toán có vô số nghiệm.**")
         
-        # Truy xuất nghiệm
         optimal_solution = []
         for j in range(num_vars):
             if var_signs[j] == "≥ 0":
