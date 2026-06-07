@@ -279,7 +279,7 @@ num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 
 # 1. Hàm mục tiêu
 # ---------------------------------------------------------
 st.subheader("1. Hàm mục tiêu (Objective Function)")
-st.info(" **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n ")
+st.info(" **Dạng tổng quát:** $\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n$ ")
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
 # Đã làm nổi bật dòng thông báo này!
