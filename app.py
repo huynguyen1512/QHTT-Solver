@@ -399,7 +399,7 @@ var_signs = []
 for j in range(num_vars):
     with cols[j]:
         var_name = f"x{get_subscript(j+1)}"
-        sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tùy ý"], key=f"vsign_{j}")
+        sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tự do"], key=f"vsign_{j}")
         var_signs.append(sign)
 
 st.subheader("3. Các hệ ràng buộc (Constraints)")
