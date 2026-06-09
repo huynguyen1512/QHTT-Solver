@@ -408,8 +408,9 @@ for i in range(num_constraints):
     row = []
     for j in range(num_vars):
         with cols[j]:
-            val = st.number_input(f"A_{i}_{j}", value=0.0, step=1.0, key=f"A_{i}_{j}", label_visibility="collapsed")
-            row.append(Fraction(val))
+            # Đổi thành text_input
+            val_str = st.text_input(f"A_{i}_{j}", value="0", key=f"A_{i}_{j}", label_visibility="collapsed")
+            row.append(parse_fraction(val_str))
     A_orig.append(row)
     
     with cols[num_vars]:
@@ -417,8 +418,9 @@ for i in range(num_constraints):
         cons_signs.append(sign)
         
     with cols[num_vars+1]:
-        val = st.number_input("b", value=0.0, step=1.0, key=f"B_{i}", label_visibility="collapsed")
-        B_orig.append(Fraction(val))
+        # Đổi thành text_input
+        val_str = st.text_input("b", value="0", key=f"B_{i}", label_visibility="collapsed")
+        B_orig.append(parse_fraction(val_str))
 
 st.markdown("---")
 show_steps = st.checkbox("Hiển thị chi tiết quá trình xoay từ vựng", value=True)
