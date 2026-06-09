@@ -7,7 +7,7 @@ from fractions import Fraction
 # CÁC HÀM HỖ TRỢ LATEX VÀ TOÁN HỌC
 # ==========================================
 def to_latex_frac(val: Fraction):
-    if val.denominator == 1:
+    if val.denominator == 1f
         return str(val.numerator)
     if val.numerator < 0:
         return f"-\\frac{{{-val.numerator}}}{{{val.denominator}}}"
@@ -380,7 +380,7 @@ num_vars = st.sidebar.number_input("Số lượng biến (n):", 1, 10, 2)
 num_constraints = st.sidebar.number_input("Số lượng ràng buộc (m):", 1, 10, 3)
 
 st.subheader("1. Hàm mục tiêu (Objective Function)")
-st.info("💡 **Dạng tổng quát:** $\\max / \\min\\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n $")
+st.info("💡 **Dạng tổng quát:** $ \\max / \\min \\quad Z = c_1 x_1 + c_2 x_2 + \\dots + c_n x_n $")
 obj_type = st.radio("Mục tiêu của bài toán:", ["Max", "Min"], horizontal=True)
 
 st.markdown("**👉 Nhập các hệ số $c_j$ tương ứng:**")
