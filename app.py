@@ -24,6 +24,15 @@ def format_term_simple(coef: Fraction, var_name: str, is_first: bool = False):
     coef_str = "" if abs_coef == 1 else to_latex_frac(abs_coef)
     return f"{sign_str}{coef_str}{var_name}"
 
+def parse_fraction(val_str):
+    """Hàm chuyển chuỗi nhập (ví dụ '1/2', '-3/4', '5') thành phân số Fraction"""
+    try:
+        val_str = val_str.strip().replace(" ", "") # Xóa khoảng trắng thừa
+        if not val_str:
+            return Fraction(0)
+        return Fraction(val_str)
+    except ValueError:
+        return Fraction(0) # Trả về 0 nếu người dùng nhập sai định dạng
 # ==========================================
 # LÕI THUẬT TOÁN ĐƠN HÌNH TỪ VỰNG
 # ==========================================
@@ -367,8 +376,9 @@ C_orig = []
 for j in range(num_vars):
     with cols[j]:
         var_name = f"x{get_subscript(j+1)}"
-        val = st.number_input(f"Hệ số của {var_name}", value=0.0, step=1.0, key=f"C_{j}")
-        C_orig.append(Fraction(val))
+        # Đổi thành text_input để nhận phân số
+        val_str = st.text_input(f"Hệ số của {var_name}", value="0", key=f"C_{j}")
+        C_orig.append(parse_fraction(val_str))
 
 st.subheader("2. Dấu của biến (Variable Conditions)")
 cols = st.columns(num_vars)
