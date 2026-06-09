@@ -486,10 +486,10 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         msg = "Hệ số $b_i$ của từ vựng xuất phát có chứa giá trị âm. Chương trình tự động áp dụng: **Phương pháp Đơn hình 2 Pha**."
     elif any(v == 0 for v in b_dict.values()):
         chosen_method = "Bland"
-        msg = "Từ vựng xuất phát khả thi nhưng rơi vào trạng thái suy biến ($b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
+        msg = "Bài toán rơi vào trạng thái suy biến (tồn tại $b_i = 0$). Chương trình tự động áp dụng: **Quy tắc Bland**."
     else:
         chosen_method = "Dantzig"
-        msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
+        msg = "Bài toán khả thi với mọi $b_i > 0$. Chương trình tự động áp dụng: **Quy tắc Dantzig**."
 
     if show_steps:
         st.subheader("📝 Quá trình chuẩn hóa bài toán")
@@ -502,7 +502,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
                 first = False
         if obj_str == "": obj_str = "0"
         
-        st.markdown("**Đưa bài toán về dạng chuẩn (Hàm mục tiêu Min, biến không âm, các bất phương trình $\\le$)**")
+        st.markdown("**Đưa bài toán về dạng chuẩn: **")
         std_latex_1 = "$$\n\\begin{array}{r l}\n"
         std_latex_1 += f"\\min Z = & {obj_str} \\\\\n"
         std_latex_1 += "\\text{với các ràng buộc:} & \\\\\n"
