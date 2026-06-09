@@ -257,6 +257,10 @@ class SimplexDictionary:
                 if pivot_j:
                     self.log_dictionary("**Bước phụ:** Phát hiện bài toán suy biến ($x_0$ kẹt trong cơ sở). Xoay ép buộc để loại $x_0$:", entering=pivot_j, leaving="x_0", is_phase1=True)
                     self.pivot(pivot_j, "x_0")
+                    
+                    # BỔ SUNG: In từ vựng ngay sau khi xoay ép buộc
+                    self.log_dictionary("**Từ vựng sau khi xoay ép buộc loại $x_0$:**", is_phase1=True)
+                    
                 else:
                     self.B.remove("x_0")
                     del self.b["x_0"]
@@ -267,6 +271,7 @@ class SimplexDictionary:
                 for i in self.B: 
                     if "x_0" in self.A[i]:
                         del self.A[i]["x_0"]
+            # ----------------------------------
             # ----------------------------------
             
             self.v = orig_v
