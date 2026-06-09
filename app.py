@@ -393,7 +393,7 @@ for j in range(num_vars):
         val_str = st.text_input(f"Hệ số của {var_name}", value="0", key=f"C_{j}")
         C_orig.append(parse_fraction(val_str))
 
-st.subheader("2. Dấu của biến (Variable Conditions)")
+st.subheader("2. Dấu của biến")
 cols = st.columns(num_vars)
 var_signs = []
 for j in range(num_vars):
@@ -402,7 +402,7 @@ for j in range(num_vars):
         sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tự do"], key=f"vsign_{j}")
         var_signs.append(sign)
 
-st.subheader("3. Các hệ ràng buộc (Constraints)")
+st.subheader("3. Các hệ ràng buộc")
 st.info("💡 **Dạng tổng quát:** $\\quad a_{i1} x_1 + a_{i2} x_2 + \\dots + a_{in} x_n \\quad \\{\\le, \\ge, =\\} \\quad b_i$")
 
 st.markdown("**👉 Nhập ma trận hệ số $a_{ij}$, chọn dấu và nhập giá trị vế phải $b_i$:**")
