@@ -237,9 +237,28 @@ class SimplexDictionary:
             if status not in ["Optimal_Unique", "Optimal_Infinite"]: return status
             if self.v > 0: return "Infeasible"
             
-            if "x_0" in self.B: return "Degenerate x_0"
-            self.N.remove("x_0")
-            for i in self.B: del self.A[i]["x_0"]
+            # --- BẢN VÁ LỖI SUY BIẾN PHA 1 ---
+            if "x_0" in self.B:
+                pivot_j = None
+                for j in self.N:
+                    if j != "x_0" and self.A["x_0"][j] != 0:
+                        pivot_j = j
+                        break
+                
+                if pivot_j:
+                    self.log_dictionary("**Bước phụ:** Phát hiện bài toán suy biến ($x_0$ kẹt trong cơ sở). Xoay ép buộc để loại $x_0$:", entering=pivot_j, leaving="x_0", is_phase1=True)
+                    self.pivot(pivot_j, "x_0")
+                else:
+                    self.B.remove("x_0")
+                    del self.b["x_0"]
+                    del self.A["x_0"]
+            
+            if "x_0" in self.N:
+                self.N.remove("x_0")
+                for i in self.B: 
+                    if "x_0" in self.A[i]:
+                        del self.A[i]["x_0"]
+            # ----------------------------------
             
             self.v = orig_v
             self.c = {j: Fraction(0) for j in self.N}
@@ -291,7 +310,6 @@ class SimplexDictionary:
                     leaving_candidates.append((ratio, i))
                     
             if not leaving_candidates:
-                # FIX LỖI ẨN TỪ VỰNG: Bắt buộc in từ vựng lỗi ra trước khi kết thúc
                 if phase_name == "Bài toán" and iteration == 0:
                     title = "Từ vựng xuất phát (Phát hiện không giới nội):"
                 elif phase_name == "Pha 1" and iteration == 1:
@@ -301,7 +319,6 @@ class SimplexDictionary:
                 else:
                     title = f"Từ vựng sau lần xoay {iteration} (Phát hiện không giới nội):"
                 
-                # Chỉ xuất mũi tên entering, không có leaving vì không tìm được
                 self.log_dictionary(title, entering=entering, is_phase1=is_phase1)
                 return "Unbounded"
                 
@@ -576,3 +593,5 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
     elif status == "Unbounded":
         st.markdown("### ⚠️ Kết luận")
         st.markdown("**Bài toán không giới nội.**")
+    else:
+        st.error(f"❌ Thuật toán dừng lại đột ngột. Mã trạng thái chưa xử lý: {status}")
