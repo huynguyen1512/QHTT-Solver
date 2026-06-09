@@ -582,30 +582,99 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             
     st.divider()
     
+    # ==========================================
+    # HIỂN THỊ KẾT LUẬN CUỐI CÙNG (ĐÃ NÂNG CẤP VÔ SỐ NGHIỆM)
+    # ==========================================
     if status in ["Optimal_Unique", "Optimal_Infinite"]:
         st.markdown("### ✅ Kết luận")
         
         if status == "Optimal_Unique":
             st.markdown("**Bài toán có nghiệm duy nhất.**")
+            
+            optimal_solution = []
+            for j in range(num_vars):
+                if var_signs[j] == "≥ 0":
+                    val = solver.b.get(f"x_{{{j+1}}}", Fraction(0))
+                elif var_signs[j] == "≤ 0":
+                    val = -solver.b.get(f"x'_{{{j+1}}}", Fraction(0))
+                elif var_signs[j] == "Tùy ý":
+                    val_plus = solver.b.get(f"x_{{{j+1}}}^+", Fraction(0))
+                    val_minus = solver.b.get(f"x_{{{j+1}}}^-", Fraction(0))
+                    val = val_plus - val_minus
+                optimal_solution.append(f"x_{{{j+1}}} = {to_latex_frac(val)}")
+            
+            st.markdown("**Nghiệm tối ưu của bài toán là:**")
+            sol_str = ", \\quad ".join(optimal_solution)
+            st.markdown(f"$$ ( {sol_str} ) $$")
+            
         else:
             st.markdown("**Bài toán có vô số nghiệm.**")
-        
-        optimal_solution = []
-        for j in range(num_vars):
-            if var_signs[j] == "≥ 0":
-                val = solver.b.get(f"x_{{{j+1}}}", Fraction(0))
-            elif var_signs[j] == "≤ 0":
-                val = -solver.b.get(f"x'_{{{j+1}}}", Fraction(0))
-            elif var_signs[j] == "Tùy ý":
-                val_plus = solver.b.get(f"x_{{{j+1}}}^+", Fraction(0))
-                val_minus = solver.b.get(f"x_{{{j+1}}}^-", Fraction(0))
-                val = val_plus - val_minus
             
-            optimal_solution.append(f"x_{{{j+1}}} = {to_latex_frac(val)}")
-        
-        st.markdown("**Nghiệm tối ưu của bài toán là:**")
-        sol_str = ", \\quad ".join(optimal_solution)
-        st.markdown(f"$$ ( {sol_str} ) $$")
+            # --- LOGIC TÌM VÀ BIỂU DIỄN VÔ SỐ NGHIỆM THEO THAM SỐ \alpha ---
+            inf_j = None
+            for j in solver.N:
+                if solver.c[j] == 0 and not solver.is_twin_in_basis(j):
+                    can_increase = True
+                    for i in solver.B:
+                        if solver.b[i] == 0 and solver.A[i][j] > 0:
+                            can_increase = False
+                            break
+                    if can_increase:
+                        inf_j = j
+                        break
+            
+            if inf_j:
+                ratios = []
+                for i in solver.B:
+                    if solver.A[i][inf_j] > 0:
+                        ratios.append(solver.b[i] / solver.A[i][inf_j])
+                
+                if not ratios:
+                    alpha_range = "\\alpha \\ge 0"
+                else:
+                    max_alpha = min(ratios)
+                    alpha_range = f"0 \\le \\alpha \\le {to_latex_frac(max_alpha)}"
+                    
+                st.markdown(f"Do biến phi cơ sở **${inf_j}$** có hệ số bằng 0 trong hàm mục tiêu $Z$, ta có thể cho ${inf_j}$ nhận một giá trị tùy ý mà không làm thay đổi giá trị tối ưu.")
+                st.markdown(f"Đặt **${inf_j} = \\alpha$** (với điều kiện ${alpha_range}$), tập vô số nghiệm của bài toán được biểu diễn dưới dạng tham số là:")
+                
+                # Hàm lấy hệ số (Hằng số, Hệ số của alpha)
+                def get_var_coeffs(var_name):
+                    if var_name == inf_j: return Fraction(0), Fraction(1)
+                    if var_name in solver.B: return solver.b[var_name], -solver.A[var_name][inf_j]
+                    return Fraction(0), Fraction(0)
+                
+                # Hàm format chuỗi a + b*alpha
+                def format_expr(c, a):
+                    if c == 0 and a == 0: return "0"
+                    if c == 0:
+                        if a == 1: return "\\alpha"
+                        if a == -1: return "-\\alpha"
+                        return f"{to_latex_frac(a)}\\alpha"
+                    res = to_latex_frac(c)
+                    if a != 0:
+                        sign = "+" if a > 0 else "-"
+                        abs_a = abs(a)
+                        a_str = "" if abs_a == 1 else to_latex_frac(abs_a)
+                        res += f" {sign} {a_str}\\alpha"
+                    return res
+
+                optimal_solution = []
+                for j in range(num_vars):
+                    if var_signs[j] == "≥ 0":
+                        c, a = get_var_coeffs(f"x_{{{j+1}}}")
+                    elif var_signs[j] == "≤ 0":
+                        c, a = get_var_coeffs(f"x'_{{{j+1}}}")
+                        c, a = -c, -a
+                    elif var_signs[j] == "Tùy ý":
+                        c_p, a_p = get_var_coeffs(f"x_{{{j+1}}}^+")
+                        c_m, a_m = get_var_coeffs(f"x_{{{j+1}}}^-")
+                        c, a = c_p - c_m, a_p - a_m
+                        
+                    optimal_solution.append(f"x_{{{j+1}}} = {format_expr(c, a)}")
+                
+                sol_str = ", \\quad ".join(optimal_solution)
+                st.markdown(f"$$ ( {sol_str} ) $$")
         
         final_obj = -solver.v if obj_type == "Max" else solver.v
         st.markdown("**Giá trị tối ưu của bài toán là:**")
