@@ -610,71 +610,97 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         else:
             st.markdown("**Bài toán có vô số nghiệm.**")
             
-            # --- LOGIC TÌM VÀ BIỂU DIỄN VÔ SỐ NGHIỆM THEO THAM SỐ \alpha ---
-            inf_j = None
-            for j in solver.N:
+            # --- LOGIC ĐA THAM SỐ (\alpha_1, \alpha_2, ...) ---
+            infinite_vars = []
+            for j in sorted(solver.N, key=solver.var_sort_key):
                 if solver.c[j] == 0 and not solver.is_twin_in_basis(j):
+                    # Kiểm tra xem có bị khóa chặt tại 0 không
                     can_increase = True
                     for i in solver.B:
                         if solver.b[i] == 0 and solver.A[i][j] > 0:
                             can_increase = False
                             break
                     if can_increase:
-                        inf_j = j
-                        break
+                        infinite_vars.append(j)
             
-            if inf_j:
-                ratios = []
-                for i in solver.B:
-                    if solver.A[i][inf_j] > 0:
-                        ratios.append(solver.b[i] / solver.A[i][inf_j])
-                
-                if not ratios:
-                    alpha_range = "\\alpha \\ge 0"
+            if not infinite_vars:
+                st.warning("Có vô số nghiệm nhưng các hướng đều bị suy biến khóa chặt.")
+            else:
+                # Nếu có 1 biến thì dùng \alpha, nhiều biến dùng \alpha_1, \alpha_2...
+                if len(infinite_vars) == 1:
+                    alpha_mapping = {infinite_vars[0]: "\\alpha"}
+                    st.markdown(f"Do biến phi cơ sở **${infinite_vars[0]}$** có hệ số bằng 0 trong hàm $Z$ và không bị khóa, ta đặt tham số:")
                 else:
-                    max_alpha = min(ratios)
-                    alpha_range = f"0 \\le \\alpha \\le {to_latex_frac(max_alpha)}"
+                    alpha_mapping = {var: f"\\alpha_{{{i+1}}}" for i, var in enumerate(infinite_vars)}
+                    vars_str = ", ".join([f"${v}$" for v in infinite_vars])
+                    st.markdown(f"Do các biến phi cơ sở **{vars_str}** có hệ số bằng 0 trong hàm $Z$ và không bị khóa, ta đặt các tham số:")
+                
+                for var, alpha in alpha_mapping.items():
+                    st.markdown(f"- Đặt **${var} = {alpha} \\ge 0$**")
                     
-                st.markdown(f"Do biến phi cơ sở **${inf_j}$** có hệ số bằng 0 trong hàm mục tiêu $Z$, ta có thể cho ${inf_j}$ nhận một giá trị tùy ý mà không làm thay đổi giá trị tối ưu.")
-                st.markdown(f"Đặt **${inf_j} = \\alpha$** (với điều kiện ${alpha_range}$), tập vô số nghiệm của bài toán được biểu diễn dưới dạng tham số là:")
+                st.markdown("**Tập vô số nghiệm của bài toán được biểu diễn dưới dạng tham số là:**")
                 
-                # Hàm lấy hệ số (Hằng số, Hệ số của alpha)
-                def get_var_coeffs(var_name):
-                    if var_name == inf_j: return Fraction(0), Fraction(1)
-                    if var_name in solver.B: return solver.b[var_name], -solver.A[var_name][inf_j]
-                    return Fraction(0), Fraction(0)
-                
-                # Hàm format chuỗi a + b*alpha
-                def format_expr(c, a):
-                    if c == 0 and a == 0: return "0"
-                    if c == 0:
-                        if a == 1: return "\\alpha"
-                        if a == -1: return "-\\alpha"
-                        return f"{to_latex_frac(a)}\\alpha"
-                    res = to_latex_frac(c)
-                    if a != 0:
-                        sign = "+" if a > 0 else "-"
-                        abs_a = abs(a)
-                        a_str = "" if abs_a == 1 else to_latex_frac(abs_a)
-                        res += f" {sign} {a_str}\\alpha"
-                    return res
+                # Hàm lấy hệ số hằng số và dict các hệ số của alpha
+                def get_full_coeffs(var_name):
+                    coeffs = {v: Fraction(0) for v in infinite_vars}
+                    if var_name in infinite_vars:
+                        coeffs[var_name] = Fraction(1)
+                        return Fraction(0), coeffs
+                    if var_name in solver.B:
+                        const = solver.b[var_name]
+                        for j in infinite_vars:
+                            coeffs[j] = -solver.A[var_name][j]
+                        return const, coeffs
+                    return Fraction(0), coeffs
 
                 optimal_solution = []
                 for j in range(num_vars):
                     if var_signs[j] == "≥ 0":
-                        c, a = get_var_coeffs(f"x_{{{j+1}}}")
+                        c, a_dict = get_full_coeffs(f"x_{{{j+1}}}")
                     elif var_signs[j] == "≤ 0":
-                        c, a = get_var_coeffs(f"x'_{{{j+1}}}")
-                        c, a = -c, -a
+                        c, a_dict = get_full_coeffs(f"x'_{{{j+1}}}")
+                        c = -c
+                        a_dict = {k: -v for k, v in a_dict.items()}
                     elif var_signs[j] == "Tùy ý":
-                        c_p, a_p = get_var_coeffs(f"x_{{{j+1}}}^+")
-                        c_m, a_m = get_var_coeffs(f"x_{{{j+1}}}^-")
-                        c, a = c_p - c_m, a_p - a_m
+                        c_p, a_p = get_full_coeffs(f"x_{{{j+1}}}^+")
+                        c_m, a_m = get_full_coeffs(f"x_{{{j+1}}}^-")
+                        c = c_p - c_m
+                        a_dict = {k: a_p[k] - a_m[k] for k in infinite_vars}
+                    
+                    # Ghép chuỗi biểu thức c + a1*alpha1 + a2*alpha2...
+                    all_alpha_zero = all(v == 0 for v in a_dict.values())
+                    
+                    if c == 0 and all_alpha_zero:
+                        expr = "0"
+                    else:
+                        expr = ""
+                        has_term = False
+                        if c != 0:
+                            expr += to_latex_frac(c)
+                            has_term = True
+                            
+                        for var in infinite_vars:
+                            val = a_dict[var]
+                            if val != 0:
+                                if has_term:
+                                    sign = " + " if val > 0 else " - "
+                                else:
+                                    sign = "" if val > 0 else "-"
+                                    
+                                abs_val = abs(val)
+                                val_str = "" if abs_val == 1 else to_latex_frac(abs_val)
+                                expr += f"{sign}{val_str}{alpha_mapping[var]}"
+                                has_term = True
                         
-                    optimal_solution.append(f"x_{{{j+1}}} = {format_expr(c, a)}")
+                        if not has_term:
+                            expr = "0"
+                            
+                    optimal_solution.append(f"x_{{{j+1}}} = {expr}")
                 
                 sol_str = ", \\quad ".join(optimal_solution)
                 st.markdown(f"$$ ( {sol_str} ) $$")
+                
+                st.info("*(Các tham số $\\alpha$ được phép nhận giá trị bất kỳ miễn là thỏa mãn điều kiện $x_i \\ge 0$ cho tất cả các biến).*")
         
         final_obj = -solver.v if obj_type == "Max" else solver.v
         st.markdown("**Giá trị tối ưu của bài toán là:**")
