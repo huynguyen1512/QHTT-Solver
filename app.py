@@ -7,7 +7,6 @@ from fractions import Fraction
 # CÁC HÀM HỖ TRỢ LATEX VÀ TOÁN HỌC
 # ==========================================
 def to_latex_frac(val: Fraction):
-    """Chuyển đổi Fraction thành chuỗi phân số LaTeX"""
     if val.denominator == 1:
         return str(val.numerator)
     if val.numerator < 0:
@@ -15,7 +14,6 @@ def to_latex_frac(val: Fraction):
     return f"\\frac{{{val.numerator}}}{{{val.denominator}}}"
 
 def format_term_simple(coef: Fraction, var_name: str, is_first: bool = False):
-    """Định dạng số hạng đơn giản cho các bước in Text"""
     if coef == 0: return ""
     sign_str = ""
     if is_first:
@@ -42,17 +40,14 @@ class SimplexDictionary:
         self.steps_log = []
         
     def var_sort_key(self, var_str):
-        """Hàm sắp xếp biến: x ưu tiên trước w, sau đó sắp xếp theo số tự nhiên"""
         nums = re.findall(r'\d+', var_str)
         num = int(nums[0]) if nums else 0
         prefix_score = 0 if 'x' in var_str else 1
         return (prefix_score, num, var_str)
 
     def log_auxiliary_problem(self):
-        """Xuất quá trình lập bài toán bổ trợ cho Pha 1"""
         latex_str = "### 🔴 Pha 1: Bài toán bổ trợ\n\n"
         
-        # BƯỚC 1: Bất phương trình gốc + x_0
         latex_str += "**Bước 1: Lập bài toán bổ trợ (Thêm biến giả $x_0 \\ge 0$ vào các ràng buộc gốc):**\n"
         latex_str += "$$\n\\begin{array}{r l}\n"
         latex_str += "\\min \\partial = & x_0 \\\\\n"
@@ -75,7 +70,6 @@ class SimplexDictionary:
         latex_str += f"& " + ", ".join(all_vars) + " \\ge 0\n"
         latex_str += "\\end{array}\n$$\n"
 
-        # BƯỚC 2: Thêm biến bù w_i
         latex_str += "**Bước 2: Thêm biến bù để chuyển về hệ phương trình:**\n"
         latex_str += "$$\n\\begin{array}{r l}\n"
         latex_str += "\\min \\partial = & x_0 \\\\\n"
@@ -109,7 +103,6 @@ class SimplexDictionary:
         self.steps_log.append(latex_str)
         
     def log_dictionary(self, title, entering=None, leaving=None, is_phase1=False):
-        """Xuất từ vựng: Căn lề thẳng hàng, giãn dòng, và đánh mũi tên chuẩn xác."""
         latex_str = f"**{title}**\n\n"
         
         sorted_N = sorted(self.N, key=self.var_sort_key)
@@ -298,6 +291,18 @@ class SimplexDictionary:
                     leaving_candidates.append((ratio, i))
                     
             if not leaving_candidates:
+                # FIX LỖI ẨN TỪ VỰNG: Bắt buộc in từ vựng lỗi ra trước khi kết thúc
+                if phase_name == "Bài toán" and iteration == 0:
+                    title = "Từ vựng xuất phát (Phát hiện không giới nội):"
+                elif phase_name == "Pha 1" and iteration == 1:
+                    title = "Từ vựng sau phép xoay ép buộc (Phát hiện không giới nội):"
+                elif phase_name == "Pha 2" and iteration == 0:
+                    title = "Từ vựng bắt đầu Pha 2 (Phát hiện không giới nội):"
+                else:
+                    title = f"Từ vựng sau lần xoay {iteration} (Phát hiện không giới nội):"
+                
+                # Chỉ xuất mũi tên entering, không có leaving vì không tìm được
+                self.log_dictionary(title, entering=entering, is_phase1=is_phase1)
                 return "Unbounded"
                 
             min_ratio = min(leaving_candidates, key=lambda x: x[0])[0]
@@ -441,7 +446,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         A_dict[slack_var] = {std_vars_map[j]: std_A_matrix[i][j] for j in range(len(std_vars_map))}
         slack_idx += 1
 
-    # --- CHẨN ĐOÁN PHƯƠNG PHÁP CHẠY NGẦM TRƯỚC ---
     min_b = min(b_dict.values())
     if min_b < 0:
         chosen_method = "Two-Phase"
@@ -453,9 +457,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
         chosen_method = "Dantzig"
         msg = "Từ vựng xuất phát khả thi nghiêm ngặt ($b_i > 0$). Chương trình tự động áp dụng: **Quy tắc Dantzig**."
 
-    # ==========================================
-    # HIỂN THỊ QUÁ TRÌNH CHUẨN HÓA
-    # ==========================================
     if show_steps:
         st.subheader("📝 Quá trình chuẩn hóa bài toán")
         
@@ -530,7 +531,6 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
 
     st.success(msg)
 
-    # Khởi tạo và Giải
     solver = SimplexDictionary(c_dict, A_dict, b_dict, Fraction(0), chosen_method)
     status = solver.solve()
     
