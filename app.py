@@ -305,8 +305,16 @@ class SimplexDictionary:
                 has_infinite = False
                 for j in self.N:
                     if self.c[j] == 0 and not self.is_twin_in_basis(j):
-                        has_infinite = True
-                        break
+                        # Kiểm tra xem biến j có bị khóa chặt tại 0 bởi một ràng buộc suy biến không
+                        can_increase = True
+                        for i in self.B:
+                            # Nếu b_i = 0 và hệ số của j trong từ vựng mang dấu trừ (self.A[i][j] > 0)
+                            if self.b[i] == 0 and self.A[i][j] > 0:
+                                can_increase = False
+                                break
+                        if can_increase:
+                            has_infinite = True
+                            break
                         
                 return "Optimal_Infinite" if has_infinite else "Optimal_Unique"
                 
