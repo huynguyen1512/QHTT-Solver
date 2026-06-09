@@ -7,7 +7,7 @@ from fractions import Fraction
 # CÁC HÀM HỖ TRỢ LATEX VÀ TOÁN HỌC
 # ==========================================
 def to_latex_frac(val: Fraction):
-    if val.denominator == 1
+    if val.denominator == 1:
         return str(val.numerator)
     if val.numerator < 0:
         return f"-\\frac{{{-val.numerator}}}{{{val.denominator}}}"
