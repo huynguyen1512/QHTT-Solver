@@ -560,8 +560,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
                     
             std_latex_2 += "\\end{array}\n$$"
             st.markdown(std_latex_2)
-        else:
-            st.info("💡 Do hệ số $b_i$ có giá trị âm, bài toán sẽ được tiếp tục xử lý bằng **Phương pháp Đơn hình 2 Pha**. Bước thêm biến bù sẽ được thực hiện lồng ghép trong quá trình lập Bài toán bổ trợ ở Pha 1.")
+        
 
     st.success(msg)
 
