@@ -501,7 +501,16 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
 
     if show_steps:
         st.subheader("📝 Quá trình chuẩn hóa bài toán")
-        
+        # --- ĐOẠN CODE MỚI: BƯỚC 0 - XỬ LÝ DẤU CỦA BIẾN ---
+        has_special_vars = any(sign != "≥ 0" for sign in var_signs)
+        if has_special_vars:
+            st.markdown("**Bước 0: Xử lý các biến không theo chuẩn (biến tùy ý hoặc $\\le 0$)**")
+            for j in range(num_vars):
+                if var_signs[j] == "≤ 0":
+                    st.markdown(f"- Biến $x_{{{j+1}}} \\le 0$: Đặt $x_{{{j+1}}} = -x'_{{{j+1}}}$ với $x'_{{{j+1}}} \\ge 0$")
+                elif var_signs[j] == "Tùy ý":
+                    st.markdown(f"- Biến $x_{{{j+1}}}$ không bị ràng buộc dấu (tùy ý): Đặt $x_{{{j+1}}} = x_{{{j+1}}}^+ - x_{{{j+1}}}^-$ với $x_{{{j+1}}}^+, x_{{{j+1}}}^- \\ge 0$")
+            st.markdown("Thay thế các biến mới vào bài toán gốc, ta được:")
         obj_str = ""
         first = True
         for j, coef in c_dict.items():
