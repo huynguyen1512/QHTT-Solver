@@ -508,7 +508,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             for j in range(num_vars):
                 if var_signs[j] == "≤ 0":
                     st.markdown(f"- Biến $x_{{{j+1}}} \\le 0$: Đặt $x_{{{j+1}}} = -x'_{{{j+1}}}$ với $x'_{{{j+1}}} \\ge 0$")
-                elif var_signs[j] == "Tùy ý":
+                elif var_signs[j] == "Tự do":
                     st.markdown(f"- Biến $x_{{{j+1}}}$ không bị ràng buộc dấu (tùy ý): Đặt $x_{{{j+1}}} = x_{{{j+1}}}^+ - x_{{{j+1}}}^-$ với $x_{{{j+1}}}^+, x_{{{j+1}}}^- \\ge 0$")
             st.markdown("Thay thế các biến mới vào bài toán gốc, ta được:")
         obj_str = ""
