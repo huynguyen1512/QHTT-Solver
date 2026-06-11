@@ -399,7 +399,7 @@ var_signs = []
 for j in range(num_vars):
     with cols[j]:
         var_name = f"x{get_subscript(j+1)}"
-        sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tự do"], key=f"vsign_{j}")
+        sign = st.selectbox(var_name, ["≥ 0", "≤ 0", "Tùy ý"], key=f"vsign_{j}")
         var_signs.append(sign)
 
 st.subheader("3. Các hệ ràng buộc")
@@ -508,7 +508,7 @@ if st.button("🚀 Giải Bài Toán", type="primary", use_container_width=True)
             for j in range(num_vars):
                 if var_signs[j] == "≤ 0":
                     st.markdown(f"- Biến $x_{{{j+1}}} \\le 0$: Đặt $x_{{{j+1}}} = -x'_{{{j+1}}}$ với $x'_{{{j+1}}} \\ge 0$")
-                elif var_signs[j] == "Tự do":
+                elif var_signs[j] == "Tùy ý":
                     st.markdown(f"- Biến $x_{{{j+1}}}$ không bị ràng buộc dấu (tùy ý): Đặt $x_{{{j+1}}} = x_{{{j+1}}}^+ - x_{{{j+1}}}^-$ với $x_{{{j+1}}}^+, x_{{{j+1}}}^- \\ge 0$")
             st.markdown("Thay thế các biến mới vào bài toán gốc, ta được:")
         obj_str = ""
